@@ -48,3 +48,6 @@
 
     Le premier joueur qui atteint une des 9 cases de la ligne opposée à sa ligne de départ gagne la partie.
 
+### Présentation en vidéo du jeu Quoridor:
+
+[Regarder la vidéo sur YouTube](https://youtu.be/cwsZZGmiFQM)
