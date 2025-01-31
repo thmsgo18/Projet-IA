@@ -13,6 +13,5 @@ class Plateau :
             print("".join(ligne))
 
 
-
 #plateau = Plateau()
 #plateau.afficher()
