@@ -32,7 +32,7 @@ class Quoridor:
         action = input("Déplacer (d) ou Placer mur (m) ? ")
 
         if action == "d":
-            direction = input("Direction (avant, arrière, gauche, droite) : ").strip().lower()
+            direction = input("Direction (haut (h), bas (b), gauche (g), droite (d)) : ").strip().lower()
 
             # Calcul de la nouvelle position
             nouvelle_position = self.calculer_nouvelle_position(joueur.position, direction)

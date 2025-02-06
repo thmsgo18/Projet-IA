@@ -12,9 +12,24 @@ class Plateau:
                 self.matrice[i][j] = "o"  # Les cases de jeu
 
     def afficher(self):
-        """Affiche le plateau dans la console."""
-        for ligne in self.matrice:
-            print("".join(ligne))
+        """Affiche le plateau avec les positions des murs."""
+        # Affichage de l'entête des colonnes (positions impaires)
+        print("X|Y=>", end="")
+        for j in range(1, len(self.matrice[0]), 2):
+            print(f" {j:2}", end="   ")
+        print()  # Nouvelle ligne après l'entête des colonnes
+        
+        # Affichage des lignes du plateau avec les indices des murs
+        for i in range(len(self.matrice)):
+            if i % 2 == 1:  # Indice des lignes impaires
+                print(f"{i:2}", end=" ")  # Affiche l'indice des lignes impaires
+            else:
+                print("   ", end=" ")  # Alignement pour les lignes paires
+            
+            # Affichage du contenu de la ligne
+            for j in range(len(self.matrice[i])):
+                print(self.matrice[i][j], end="  ")
+            print()  # Nouvelle ligne après chaque ligne du plateau
 
     def placer_joueur(self, J):
         """Placement d'un joueur sur le plateau"""
