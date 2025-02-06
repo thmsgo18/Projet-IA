@@ -1,6 +1,5 @@
 import queue
 
-
 class Plateau:
     def __init__(self, taille=9):
         self.taille = taille  # Taille du plateau (9x9)
@@ -16,6 +15,10 @@ class Plateau:
         """Affiche le plateau dans la console."""
         for ligne in self.matrice:
             print("".join(ligne))
+
+    def placer_joueur(self, J):
+        """Placement d'un joueur sur le plateau"""
+        self.matrice[J.position[0]][J.position[1]] = J.nom
 
     def est_mur_valide(self, x, y, orientation):
         """Vérifie si un mur peut être placé à la position donnée."""
@@ -77,8 +80,3 @@ class Plateau:
 
         return False
 
-
-plateau = Plateau()
-plateau.afficher()
-plateau.placer_mur(15,0,"horizontal")
-plateau.afficher()
