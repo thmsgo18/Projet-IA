@@ -55,18 +55,46 @@ class Plateau:
         return True
 
     def placer_mur(self, x, y, orientation):
-        """Place un mur sur le plateau si c'est possible."""
-        if not self.est_mur_valide(x, y, orientation):
-            print("Placement de mur invalide.")
-            return False
+        while True:
+            debut_ou_fin = input("Voulez-vous que cette position soit le 'début' ou la 'fin' du mur ? (début/fin) ").strip().lower()
+            if debut_ou_fin == "début":
+                pass  # La position est déjà correcte
+            elif debut_ou_fin == "fin":
+                if orientation == "horizontal":
+                    x -= 0
+                    y -= 2
+                elif orientation == "vertical":
+                    x -= 2
+                    y -= 0
+            else:
+                print("Entrée invalide. Veuillez entrer 'début' ou 'fin'.")
+                continue
 
+            # Vérifier si le mur dépasse les limites du plateau
+            if orientation == "horizontal" and (y < 1 or y + 2 >= len(self.matrice[0])):
+                print("Mur hors limite ! Réessayez avec une autre position.")
+                continue
+            elif orientation == "vertical" and (x < 1 or x + 2 >= len(self.matrice)):
+                print("Mur hors limite ! Réessayez avec une autre position.")
+                continue
+
+            # Vérifier si le placement du mur est valide après modification
+            if not self.est_mur_valide(x, y, orientation):
+                print("Placement de mur invalide. Essayez encore.")
+            else:
+                break  # Sortie de la boucle si valide
+        
         # Placer le mur
         if orientation == "horizontal":
+            self.matrice[x][y - 1] = "-"
             self.matrice[x][y] = "-"
             self.matrice[x][y + 1] = "-"
+            self.matrice[x][y + 2] = "-"
         elif orientation == "vertical":
+            self.matrice[x - 1][y] = "|"
             self.matrice[x][y] = "|"
             self.matrice[x + 1][y] = "|"
+            self.matrice[x + 2][y] = "|"
 
         self.murs.append((x, y, orientation))
         return True
