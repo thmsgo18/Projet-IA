@@ -9,6 +9,11 @@ class Joueur:
         x0, y0 = self.position
         x1, y1 = nouvelle_pos
 
+        dim = len(plateau.matrice)
+        if not (0 <= x1 < dim and 0 <= y1 < dim):
+            # hors plateau → déplacement invalide
+            return False
+
         # 1) on ne gère que les pas de 2 dans un axe
         if not ((x0 == x1 and abs(y0-y1) == 2) or (y0 == y1 and abs(x0-x1) == 2)):
             return False
