@@ -4,7 +4,35 @@ from Object.Plateau import Plateau
 from Object.Joueur import Joueur
 from GameState import GameState
 
-PROFONDEUR = 2     # ou 2, 4… selon le temps de calcul que tu acceptes
+# Profondeur de base pour l'algorithme minimax
+PROFONDEUR_BASE = 3
+
+# Profondeur adaptative selon la phase du jeu
+def get_profondeur(joueurs, tour):
+    """Ajuste la profondeur selon la phase du jeu
+    
+    Args:
+        joueurs: liste des joueurs
+        tour: indice du joueur actuel
+        
+    Returns:
+        profondeur: profondeur de recherche ajustée
+    """
+    joueur = joueurs[tour]
+    
+    # Calculer la distance à l'objectif (approximation sans tenir compte des murs)
+    distance_joueur = abs(joueur.position[0] - joueur.ligne_obj)
+    
+    # Phase finale (le joueur est proche de gagner)
+    if distance_joueur <= 3:
+        return PROFONDEUR_BASE + 1  # Augmenter la profondeur en fin de partie
+    
+    # Phase initiale (le joueur est loin)
+    if distance_joueur >= 7:
+        return max(2, PROFONDEUR_BASE - 1)  # Réduire la profondeur en début de partie
+    
+    # Phase normale
+    return PROFONDEUR_BASE
 
 class Quoridor:
     def __init__(self, ai_flags=None):
@@ -45,10 +73,22 @@ class Quoridor:
         if is_ai:
             print(f"--- Tour du joueur {j.nom} (IA) ---")
             state = GameState(self.plateau, self.joueurs, self.tour)
+            
+            # Utiliser la profondeur adaptative selon la phase du jeu
+            profondeur_adaptee = get_profondeur(self.joueurs, self.tour)
+            
+            # Ajuster epsilon (exploration) selon la phase du jeu
+            distance_objectif = abs(j.position[0] - j.ligne_obj)
+            epsilon = 0.3  # Valeur par défaut
+            if distance_objectif <= 3:  # Fin de partie
+                epsilon = 0.1  # Moins d'exploration en fin de partie
+            elif distance_objectif >= 7:  # Début de partie
+                epsilon = 0.4  # Plus d'exploration en début de partie
+            
             best_move = state.choix_coup(
-                profondeur=PROFONDEUR,
+                profondeur=profondeur_adaptee,
                 IA_index=self.tour,
-                epsilon=0.3,
+                epsilon=epsilon,
                 temperature=0.5
             )
             print("L'IA joue :", best_move)
@@ -93,10 +133,22 @@ class Quoridor:
         elif choix == "i":
             # IA ponctuelle
             state = GameState(self.plateau, self.joueurs, self.tour)
+            
+            # Utiliser la profondeur adaptative selon la phase du jeu
+            profondeur_adaptee = get_profondeur(self.joueurs, self.tour)
+            
+            # Ajuster epsilon selon la phase du jeu
+            distance_objectif = abs(j.position[0] - j.ligne_obj)
+            epsilon = 0.1  # Valeur par défaut
+            if distance_objectif <= 3:  # Fin de partie
+                epsilon = 0.05  # Moins d'exploration en fin de partie
+            elif distance_objectif >= 7:  # Début de partie
+                epsilon = 0.15  # Plus d'exploration en début de partie
+                
             best_move = state.choix_coup(
-                profondeur=PROFONDEUR,
+                profondeur=profondeur_adaptee,
                 IA_index=self.tour,
-                epsilon=0.3,
+                epsilon=epsilon,
                 temperature=0.5
             )
             print("L'IA joue :", best_move)
