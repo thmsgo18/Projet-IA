@@ -1,5 +1,7 @@
 # Plateau.py
 import queue
+from collections import deque
+
 
 class Plateau:
     EMPTY = " "
@@ -55,24 +57,38 @@ class Plateau:
             return True
         return False
 
-    def chemin_existe(self, depart, ligne_obj):
-        """BFS sur les cellules en sautant case-mur-case, détecte correctement WALL."""
-        visited = set()
-        q = queue.Queue()
-        q.put(depart)
-        while not q.empty():
-            x,y = q.get()
-            if x == ligne_obj:
+
+    def chemin_existe(self, start: tuple[int,int], target_line: int) -> bool:
+        """
+        Vérifie s'il existe un chemin libre (sans murs) depuis `start`
+        jusqu'à n'importe quelle cellule sur la ligne `target_line`.
+        """
+        visited = {start}
+        q = deque([start])
+        dim = len(self.matrice)
+
+        while q:
+            x, y = q.popleft()
+            # Si on a atteint la ligne cible, il y a un chemin
+            if x == target_line:
                 return True
-            visited.add((x,y))
-            for dx,dy in [(-2,0),(2,0),(0,-2),(0,2)]:
-                nx,ny = x+dx, y+dy
-                if not (0 <= nx < len(self.matrice) and 0 <= ny < len(self.matrice)): continue
-                if (nx,ny) in visited: continue
-                # case intermédiaire : mur ?
-                mx,my = (x+nx)//2, (y+ny)//2
-                if self.matrice[mx][my] == Plateau.WALL: continue
-                # la destination doit être une cellule vide ou un joueur
-                if self.matrice[nx][ny] in (Plateau.CELL, "1", "2"):
-                    q.put((nx,ny))
+
+            # Explorer les 4 déplacements « cases » (pas de saut ici)
+            for dx, dy in [(-2,0),(2,0),(0,-2),(0,2)]:
+                nx, ny = x + dx, y + dy
+                # Hors plateau ?
+                if not (0 <= nx < dim and 0 <= ny < dim):
+                    continue
+
+                # Vérifier le mur intermédiaire
+                mx, my = (x + nx)//2, (y + ny)//2
+                if self.matrice[mx][my] == Plateau.WALL:
+                    continue
+
+                # Si jamais visité, on ajoute à la file
+                if (nx, ny) not in visited:
+                    visited.add((nx, ny))
+                    q.append((nx, ny))
+
+        # File épuisée, pas de chemin
         return False

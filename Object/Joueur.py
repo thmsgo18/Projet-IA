@@ -36,35 +36,40 @@ class Joueur:
 
         return False
 
-
     def tenter_saut(self, x0, y0, x1, y1, plateau):
+        # Vérifie s'il y a un mur entre le joueur et l'adversaire
+        mx, my = (x0 + x1) // 2, (y0 + y1) // 2
+        if plateau.matrice[mx][my] == plateau.WALL:
+            return False
+
         dx, dy = x1 - x0, y1 - y0
         taille = plateau.taille * 2 - 1
 
-        # a) saut droit derrière
+        # a) saut droit derrière l'adversaire
         bx, by = x1 + dx, y1 + dy
         if 0 <= bx < taille and 0 <= by < taille:
             # pas de mur entre (x1,y1) et (bx,by) ?
-            if plateau.matrice[(x1+bx)//2][(y1+by)//2] != plateau.WALL \
-               and plateau.matrice[bx][by] == plateau.CELL:
+            if plateau.matrice[(x1 + bx) // 2][(y1 + by) // 2] != plateau.WALL \
+                    and plateau.matrice[bx][by] == plateau.CELL:
                 plateau.matrice[x0][y0] = plateau.CELL
                 self.position = (bx, by)
                 plateau.matrice[bx][by] = self.nom
                 return True
 
-        # b) si saut droit bloqué, on essaie sauts diagonaux gauche et droite
-        # directions diagonales: horizontales si déplacement vertical, verticales si déplacement horizontal
+        # b) si saut droit bloqué, on essaie les sauts diagonaux (gauche et droite)
+        # selon la direction initiale (verticale ou horizontale)
         if dx != 0:
-            diag_moves = [(0, -2), (0, 2)]
+            diag_moves = [(0, -2), (0, 2)]  # joueur en face verticalement → tester gauche/droite
         else:
-            diag_moves = [(-2, 0), (2, 0)]
+            diag_moves = [(-2, 0), (2, 0)]  # joueur en face horizontalement → tester haut/bas
+
         for sx, sy in diag_moves:
             cx, cy = x1 + sx, y1 + sy
             if not (0 <= cx < taille and 0 <= cy < taille):
                 continue
             # pas de mur entre (x1,y1) et (cx,cy) ?
-            if plateau.matrice[(x1+cx)//2][(y1+cy)//2] != plateau.WALL \
-               and plateau.matrice[cx][cy] == plateau.CELL:
+            if plateau.matrice[(x1 + cx) // 2][(y1 + cy) // 2] != plateau.WALL \
+                    and plateau.matrice[cx][cy] == plateau.CELL:
                 plateau.matrice[x0][y0] = plateau.CELL
                 self.position = (cx, cy)
                 plateau.matrice[cx][cy] = self.nom
@@ -77,3 +82,19 @@ class Joueur:
             self.nb_murs -= 1
             return True
         return False
+
+    def get_deplacements_possibles(self, plateau):
+        possibles = []
+        x0, y0 = self.position
+        dim = len(plateau.matrice)
+
+        for dx, dy in [(-2,0),(2,0),(0,-2),(0,2)]:
+            x1, y1 = x0 + dx, y0 + dy
+            if not (0 <= x1 < dim and 0 <= y1 < dim):
+                continue
+            mx, my = (x0 + x1)//2, (y0 + y1)//2
+            if plateau.matrice[mx][my] == plateau.WALL:
+                continue
+            if plateau.matrice[x1][y1] == plateau.CELL:
+                possibles.append((x1, y1))
+        return possibles
