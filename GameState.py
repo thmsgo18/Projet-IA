@@ -233,16 +233,16 @@ class GameState:
         
         return move_moves + wall_moves
     
-    def calculer_chemin(self, plateau: Plateau, start: tuple, target_line: int) -> list:
+    def calculer_chemin(self, plateau: Plateau, depart: tuple, arrivee: int) -> list:
         """Calcule le chemin le plus court et le retourne comme une liste de positions"""
-        visited = {start}
+        visited = {depart}
         q = queue.Queue()
-        q.put((start, [start]))  # (position, chemin)
+        q.put((depart, [depart]))  # (position, chemin)
         dim = len(plateau.matrice)
 
         while not q.empty():
             (x, y), path = q.get()
-            if x == target_line:
+            if x == arrivee:
                 return path
             for dx, dy in [(-2,0),(2,0),(0,-2),(0,2)]:
                 nx, ny = x + dx, y + dy
@@ -398,7 +398,7 @@ class GameState:
         if self.tour == IA_index:
             value = -math.inf
             for move in self.get_legal_moves():
-                nouvel_etat = self.simuler_coup(move)
+                nouvel_etat = self.apply_move(move)
                 if nouvel_etat:
                     score = nouvel_etat.minimax(profondeur - 1, IA_index, alpha, beta)
                     value = max(value, score)
@@ -411,7 +411,7 @@ class GameState:
         else:
             value = math.inf
             for move in self.get_legal_moves():
-                nouvel_etat = self.simuler_coup(move)
+                nouvel_etat = self.apply_move(move)
                 if nouvel_etat:
                     score = nouvel_etat.minimax(profondeur - 1, IA_index, alpha, beta)
                     value = min(value, score)
@@ -420,13 +420,14 @@ class GameState:
                         break  # Élagage alpha
             return value
     
-    def choix_coup(self, profondeur=3, IA_index=None, epsilon=0.0) -> tuple:
+    def choix_coup(self, profondeur=3, IA_index=None, epsilon=0.0, temperature=0.0) -> tuple:
         """Choix du meilleur coup à jouer avec minimax + élagage alpha-beta
         
         Args:
             profondeur: profondeur de recherche
             IA_index: indice du joueur IA (0 ou 1)
             epsilon: probabilité de choisir un coup aléatoire (exploration)
+            temperature: paramètre de température pour contrôler l'exploration (non utilisé actuellement)
         
         Returns:
             meilleur_coup: le coup choisi
@@ -451,7 +452,7 @@ class GameState:
         
         # Vérifier si on peut gagner immédiatement
         for coup in coups_possibles:
-            nouvel_etat = self.simuler_coup(coup)
+            nouvel_etat = self.apply_move(coup)
             if nouvel_etat and nouvel_etat.is_terminal():
                 return coup
         
@@ -468,7 +469,7 @@ class GameState:
         # Évaluer chaque coup possible
         for coup in coups_possibles:
             # Simuler le coup
-            nouvel_etat = self.simuler_coup(coup)
+            nouvel_etat = self.apply_move(coup)
             if nouvel_etat is None:
                 continue  # Coup invalide
                 
