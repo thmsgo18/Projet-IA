@@ -1,10 +1,9 @@
-# Quoridor.py
 import sys
 from Object.Plateau import Plateau
 from Object.Joueur import Joueur
 from GameState import GameState
 
-# Paramètres pour les différents niveaux d'IA
+# Définition des parametres des différents niveaux d'IA
 IA_LEVELS = {
     "facile": {
         "profondeur": 1,
@@ -30,15 +29,17 @@ IA_LEVELS = {
 }
 
 class Quoridor:
+    """
+    Classe représentant le jeu Quoridor
+    """
     def __init__(self, ai_flags=None, ai_level="moyen"):
         """
-        ai_flags: liste de bool [is_ai_joueur1, is_ai_joueur2]
-        ai_level: niveau de difficulté de l'IA ("facile", "moyen", "difficile")
+        Fonction d'initialisation de la classe
         """
         self.plateau = Plateau()
-        max_idx = 2 * self.plateau.taille - 2  # 16 si taille=9
-        mid    = self.plateau.taille - 1      #  8
-        # instanciation des joueurs
+        max_idx = 2 * self.plateau.taille - 2
+        mid    = self.plateau.taille - 1
+        # liste des joueurs
         self.joueurs = [
             Joueur("1", (0,    mid), max_idx),
             Joueur("2", (max_idx, mid), 0)
@@ -46,42 +47,45 @@ class Quoridor:
         for j in self.joueurs:
             self.plateau.placer_joueur(j)
         self.tour = 0
-        # par défaut, personne n'est IA
         self.ai_flags = ai_flags or [False, False]
-        # niveau de l'IA
         self.ai_level = ai_level
-        # niveaux spécifiques pour chaque IA (utilisé en mode IA vs IA)
         self.ai_levels = {0: ai_level, 1: ai_level}
 
     def afficher_plateau(self):
+        """
+        Fonction d'affichage du plateau.
+        """
         self.plateau.afficher()
         for j in self.joueurs:
             print(f"Joueur {j.nom} : murs restants = {j.nb_murs}")
         print()
 
     def verifier_victoire(self):
+        """
+        Fonction de vérification de la victoire
+        """
         for j in self.joueurs:
             if j.position[0] == j.ligne_obj:
                 return j.nom
         return None
 
     def jouer_tour(self):
+        """
+        Fonction permettant de jouer un tour
+        """
         j = self.joueurs[self.tour]
         is_ai = self.ai_flags[self.tour]
 
-        # Si IA, on choisit et applique automatiquement
         if is_ai:
-            # Utiliser le niveau spécifique à cette IA
+            # Dans le cas où le joueur est une IA
             current_ai_level = self.ai_levels.get(self.tour, self.ai_level)
             print(f"--- Tour du joueur {j.nom} (IA - {current_ai_level}) ---")
             state = GameState(self.plateau, self.joueurs, self.tour)
             
-            # Récupérer les paramètres selon le niveau
             params = IA_LEVELS[current_ai_level]
             profondeur = params["profondeur"]
             epsilon_base = params["epsilon"]
             
-            # Utiliser une valeur fixe pour epsilon, sans notion de phase
             epsilon = epsilon_base
             
             best_move = state.choix_coup(
@@ -96,9 +100,10 @@ class Quoridor:
             self.tour = new_state.tour
             return
 
-        # Sinon, interaction humaine
+        # Dans le cas ou le jour est un humain
         print(f"--- Tour du joueur {j.nom} ---")
         choix = input("(d)éplacer, (m)ur, (q)uitter : ").strip().lower()
+        # Action réalisé en fonction de la saisie de l'utilisateur
         if choix == "q":
             print("Au revoir !")
             sys.exit()
@@ -131,20 +136,19 @@ class Quoridor:
         else:
             print("Action inconnue."); return
 
-        # Tour suivant (humain)
         self.tour = (self.tour + 1) % len(self.joueurs)
 
 if __name__ == "__main__":
-    # Sélection du mode
+    # Lancement du programme
     mode = None
+    # Choix du mode de jeux
     while mode not in ("1","2","3"):
         mode = input("Mode de jeu: 1) H vs H  2) H vs IA  3) IA vs IA : ").strip()
     
-    # Définir les flags IA
     ai_flags = [False, False]
     if mode == "2":
+        # Condition permettant de redemandé une saisie à l'utilisateur pour choisir le niveau de l'IA
         ai_flags[1] = True
-        # Sélection du niveau d'IA pour l'adversaire
         level = None
         while level not in ("1", "2", "3"):
             level = input("Niveau de l'IA: 1) Facile  2) Moyen  3) Difficile : ").strip()
@@ -154,8 +158,8 @@ if __name__ == "__main__":
             "3": "difficile"
         }[level]
     elif mode == "3":
+        # Condition permettant de redemandé une saisie à l'utilisateur pour choisir le niveau des IAs
         ai_flags = [True, True]
-        # Sélection du niveau pour chaque IA
         level1 = None
         while level1 not in ("1", "2", "3"):
             level1 = input("Niveau de l'IA 1: 1) Facile  2) Moyen  3) Difficile : ").strip()
@@ -163,7 +167,6 @@ if __name__ == "__main__":
         while level2 not in ("1", "2", "3"):
             level2 = input("Niveau de l'IA 2: 1) Facile  2) Moyen  3) Difficile : ").strip()
         
-        # Créer un dictionnaire pour stocker les niveaux de chaque IA
         ai_levels = {
             0: {
                 "1": "facile",
@@ -176,15 +179,13 @@ if __name__ == "__main__":
                 "3": "difficile"
             }[level2]
         }
-        # Utiliser le niveau moyen comme niveau par défaut pour l'interface
         ai_level = "moyen"
     else:
-        ai_level = "moyen"  # Valeur par défaut, ne sera pas utilisée
+        ai_level = "moyen"
 
-    # Créer le jeu
+    # Création d'une instance de la classe Quoridor
     jeu = Quoridor(ai_flags=ai_flags, ai_level=ai_level)
     
-    # Si mode IA vs IA, stocker les niveaux spécifiques
     if mode == "3":
         jeu.ai_levels = ai_levels
     while True:

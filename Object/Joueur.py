@@ -14,20 +14,20 @@ class Joueur:
             # hors plateau → déplacement invalide
             return False
 
-        # 1) on ne gère que les pas de 2 dans un axe
+        # on ne gère que les pas de 2 dans un axe
         if not ((x0 == x1 and abs(y0-y1) == 2) or (y0 == y1 and abs(x0-x1) == 2)):
             return False
 
-        # 2) s’il y a un adversaire, on passe au saut
+        # s'il y a un adversaire, on passe au saut
         if plateau.matrice[x1][y1] in ("1","2"):
             return self.tenter_saut(x0, y0, x1, y1, plateau)
 
-        # 3) sinon, saut droit sans adversaire : on bloque si mur au milieu
+        # sinon, saut droit sans adversaire : on bloque si mur au milieu
         mx, my = (x0+x1)//2, (y0+y1)//2
         if plateau.matrice[mx][my] == plateau.WALL:
             return False
 
-        # 4) case vide => on bouge
+        # case vide => on bouge
         if plateau.matrice[x1][y1] == plateau.CELL:
             plateau.matrice[x0][y0] = plateau.CELL
             self.position = (x1, y1)
@@ -37,7 +37,7 @@ class Joueur:
         return False
 
     def tenter_saut(self, x0, y0, x1, y1, plateau):
-        # Vérifie s'il y a un mur entre le joueur et l'adversaire
+        # vérification de s'il y a un mur entre le joueur et l'adversaire
         mx, my = (x0 + x1) // 2, (y0 + y1) // 2
         if plateau.matrice[mx][my] == plateau.WALL:
             return False
@@ -45,7 +45,7 @@ class Joueur:
         dx, dy = x1 - x0, y1 - y0
         taille = plateau.taille * 2 - 1
 
-        # a) saut droit derrière l'adversaire
+        # saut droit derrière l'adversaire
         bx, by = x1 + dx, y1 + dy
         if 0 <= bx < taille and 0 <= by < taille:
             # pas de mur entre (x1,y1) et (bx,by) ?
@@ -56,12 +56,11 @@ class Joueur:
                 plateau.matrice[bx][by] = self.nom
                 return True
 
-        # b) si saut droit bloqué, on essaie les sauts diagonaux (gauche et droite)
-        # selon la direction initiale (verticale ou horizontale)
+        # si saut droit bloqué, on essaie les sauts diagonaux
         if dx != 0:
-            diag_moves = [(0, -2), (0, 2)]  # joueur en face verticalement → tester gauche/droite
+            diag_moves = [(0, -2), (0, 2)]
         else:
-            diag_moves = [(-2, 0), (2, 0)]  # joueur en face horizontalement → tester haut/bas
+            diag_moves = [(-2, 0), (2, 0)]
 
         for sx, sy in diag_moves:
             cx, cy = x1 + sx, y1 + sy
