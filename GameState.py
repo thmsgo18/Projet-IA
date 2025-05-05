@@ -118,13 +118,12 @@ class GameState:
                     moves.append(("move", (x2, y2)))
         return moves
     
-    def _get_wall_positions(self, adversaire, dim, phase) -> list:
+    def _get_wall_positions(self, adversaire, dim) -> list:
         """Génère les positions stratégiques pour placer des murs.
         
         Paramètres:
             adversaire: le joueur adversaire
             dim: dimension du plateau
-            phase: phase du jeu ("debut", "milieu", "fin")
             
         Retourne:
             wall_positions: liste des positions possibles pour les murs
@@ -133,6 +132,18 @@ class GameState:
         wall_positions = []
         px, py = adversaire.position
         
+        # Positions devant l'adversaire (pour le bloquer dans sa progression)
+        direction = -1 if adversaire.ligne_obj == 0 else 1
+        front_x = px + direction * 2  # Position devant l'adversaire
+        
+        # Ajouter des positions stratégiques devant l'adversaire
+        if 1 <= front_x < dim-1:
+            for offset in [-2, 0, 2]:
+                wx, wy = front_x, py + offset
+                if 1 <= wy < dim-1 and wx % 2 == 1 and wy % 2 == 1:
+                    wall_positions.append((wx, wy))
+        
+        # Ajouter des positions autour de l'adversaire
         for i in range(-3, 4, 2):
             for j in range(-3, 4, 2):
                 wx, wy = px + i, py + j
@@ -140,7 +151,7 @@ class GameState:
                     wall_positions.append((wx, wy))
         
         # Limiter le nombre de positions pour améliorer les performances
-        max_walls = 10 if phase == "debut" else 15
+        max_walls = 18  # Valeur fixe, sans notion de phase
         if len(wall_positions) > max_walls:
             wall_positions = wall_positions[:max_walls]
         
@@ -151,7 +162,7 @@ class GameState:
         
         Paramètres:
             x, y: position du mur
-            orientation: orientation du mur ("horizontal" ou "vertical")
+            orientation: orientation du mur ("h" ou "v")
             adversaire: le joueur adversaire
             d_adversaire: distance actuelle de l'adversaire à son objectif
             
@@ -159,11 +170,11 @@ class GameState:
             (valide, coup): si le mur est valide et le coup correspondant
         """
         # Vérifier si un mur est déjà présent
-        if orientation == "horizontal":
+        if orientation == "h":
             if (self.plateau.matrice[x][y-1] == Plateau.WALL or 
                 self.plateau.matrice[x][y+1] == Plateau.WALL):
                 return (False, None)
-        else:  # vertical
+        else:  # vertical (v)
             if (self.plateau.matrice[x-1][y] == Plateau.WALL or 
                 self.plateau.matrice[x+1][y] == Plateau.WALL):
                 return (False, None)
@@ -176,10 +187,15 @@ class GameState:
         # Vérifier que tous les joueurs ont un chemin vers leur objectif
         if all(s2.plateau.chemin_existe(p.position, p.ligne_obj) for p in s2.joueurs):
             # Vérifier si ce mur augmente la distance de l'adversaire
-            new_d_adv = s2.shortest_path_length(s2.plateau, adversaire.position, adversaire.ligne_obj)
+            new_d_adv = s2.bfs(s2.plateau, adversaire.position, adversaire.ligne_obj)
             
-            # Ajouter le mur si efficace
+            # Ajouter le mur s'il est efficace (augmente la distance de l'adversaire d'au moins 1)
             if new_d_adv > d_adversaire:
+                return (True, ("wall", x, y, orientation))
+            
+            # Parfois accepter des murs même s'ils n'augmentent pas la distance
+            # Cela permet plus de diversité dans le jeu
+            elif new_d_adv == d_adversaire and random.random() < 0.3:
                 return (True, ("wall", x, y, orientation))
                 
         return (False, None)
@@ -202,27 +218,15 @@ class GameState:
         # 2. Générer les placements de murs possibles
         if joueur.nb_murs > 0:
             # Calculer les distances actuelles vers les objectifs
-            d_moi = self.shortest_path_length(self.plateau, joueur.position, joueur.ligne_obj)
-            d_adversaire = self.shortest_path_length(self.plateau, adversaire.position, adversaire.ligne_obj)
-            
-            # Déterminer la phase de jeu
-            phase = "debut"
-            if d_moi <= 4 or d_adversaire <= 4:
-                phase = "fin"
-            elif d_moi <= 7 or d_adversaire <= 7:
-                phase = "milieu"
-            
-            # En début de partie, limiter les placements de murs
-            if phase == "debut" and d_adversaire > 5:
-                # Retourner uniquement les déplacements en début de partie
-                return moves
+            d_moi = self.bfs(self.plateau, joueur.position, joueur.ligne_obj)
+            d_adversaire = self.bfs(self.plateau, adversaire.position, adversaire.ligne_obj)
             
             # Générer les positions stratégiques pour les murs
-            wall_positions = self._get_wall_positions(adversaire, dim, phase)
+            wall_positions = self._get_wall_positions(adversaire, dim)
             
             # Essayer de placer des murs aux positions sélectionnées
             for x, y in wall_positions:
-                for orientation in ["horizontal", "vertical"]:
+                for orientation in ["h", "v"]:
                     valide, coup = self._verifier_placement_mur(x, y, orientation, adversaire, d_adversaire)
                     if valide:
                         moves.append(coup)
@@ -275,7 +279,8 @@ class GameState:
         nv.tour = 1 - tour
         return nv
 
-    def evaluer(self, IA_index: int, poids_avancer=1.2, poids_bloquer=0.8, poids_murs=0.1) -> float:
+    def evaluer(self, IA_index: int, poids_avancer=1.2, poids_bloquer=0.8, poids_murs=0.1, 
+               poids_avance=0.5) -> float:
         """Fonction d'évaluation simplifiée pour l'algorithme minimax.
         
         Paramètres:
@@ -283,6 +288,7 @@ class GameState:
             poids_avancer: importance de se rapprocher de son objectif
             poids_bloquer: importance de bloquer l'adversaire
             poids_murs: importance des murs restants
+            poids_avance: importance de l'avance dans la course
         
         Retourne:
             score: valeur d'évaluation de l'état (plus élevé = meilleur pour l'IA)
@@ -292,8 +298,8 @@ class GameState:
         adversaire = self.joueurs[1 - IA_index]
         
         # Calculer les distances via le plus court chemin
-        d_moi = self.shortest_path_length(self.plateau, moi.position, moi.ligne_obj)
-        d_adversaire = self.shortest_path_length(self.plateau, adversaire.position, adversaire.ligne_obj)
+        d_moi = self.bfs(self.plateau, moi.position, moi.ligne_obj)
+        d_adversaire = self.bfs(self.plateau, adversaire.position, adversaire.ligne_obj)
         
         # 1. Score pour se rapprocher de son objectif (négatif car on veut minimiser la distance)
         score_avancer = -poids_avancer * d_moi
@@ -310,18 +316,12 @@ class GameState:
         
         # 4. Bonus pour être en avance dans la course
         avantage_relatif = d_adversaire - d_moi
-        bonus_avance = 0.5 * avantage_relatif
-        
-        # 5. Pénalité pour les murs placés trop tôt
-        penalite_murs = 0
-        murs_places = 10 - moi.nb_murs  # Supposant 10 murs au départ
-        if murs_places > 0 and d_moi > 6 and d_adversaire > 6:  # Début de partie
-            penalite_murs = -0.3 * murs_places
+        bonus_avance = poids_avance * avantage_relatif
         
         # Combiner tous les scores
-        return score_avancer + score_bloquer + score_murs + bonus_avance + penalite_murs
+        return score_avancer + score_bloquer + score_murs + bonus_avance
 
-    def shortest_path_length(self, plateau: Plateau, start: tuple, target_line: int) -> float:
+    def bfs(self, plateau: Plateau, start: tuple, target_line: int) -> float:
         visited = {start}
         q = queue.Queue()
         q.put((start, 0))
@@ -353,7 +353,7 @@ class GameState:
             if j.position[0] == j.ligne_obj:
                 return j.nom
         return None
-
+    """
     def minMax(self, profondeur: int, IA_index: int):
         if self.is_terminal():
             winner = self.get_winner()
@@ -372,19 +372,32 @@ class GameState:
                 score = self.apply_move(move).minMax(profondeur - 1, IA_index)
                 best = min(best, score)
             return best
-
-    def minimax(self, profondeur: int, IA_index: int, alpha: float = -math.inf, beta: float = math.inf) -> float:
-        """Algorithme minimax avec élagage alpha-beta
+    """
+    def minimax(self, profondeur: int, IA_index: int, alpha: float = -math.inf, beta: float = math.inf,
+                  poids_avancer=1.2, poids_bloquer=0.8, poids_murs=0.1, 
+                  poids_avance=0.5) -> float:
+        """Algorithme minimax avec élagage alpha-beta et paramètres personnalisables
         
         Args:
             profondeur: profondeur de recherche restante
             IA_index: indice du joueur IA (0 ou 1)
             alpha: valeur alpha pour l'élagage
             beta: valeur beta pour l'élagage
+            poids_avancer: importance de se rapprocher de son objectif
+            poids_bloquer: importance de bloquer l'adversaire
+            poids_murs: importance des murs restants
+            poids_avance: importance de l'avance dans la course
             
         Returns:
             score: valeur d'évaluation de l'état
         """
+        # Vérifier si l'état est dans la table de transposition
+        state_hash = self.get_hash()
+        if state_hash in TRANSPOSITION_TABLE:
+            stored_depth, stored_value = TRANSPOSITION_TABLE[state_hash]
+            if stored_depth >= profondeur:
+                return stored_value
+        
         # Cas terminal
         if self.is_terminal():
             winner = self.get_winner()
@@ -392,7 +405,8 @@ class GameState:
             
         # Cas profondeur zéro
         if profondeur == 0:
-            return self.evaluer(IA_index)
+            return self.evaluer(IA_index, poids_avancer, poids_bloquer, poids_murs, 
+                              poids_avance)
             
         # Max node (tour du joueur IA)
         if self.tour == IA_index:
@@ -400,11 +414,18 @@ class GameState:
             for move in self.get_legal_moves():
                 nouvel_etat = self.apply_move(move)
                 if nouvel_etat:
-                    score = nouvel_etat.minimax(profondeur - 1, IA_index, alpha, beta)
+                    score = nouvel_etat.minimax(
+                        profondeur - 1, IA_index, alpha, beta, 
+                        poids_avancer, poids_bloquer, poids_murs,
+                        poids_avance
+                    )
                     value = max(value, score)
                     alpha = max(alpha, value)
                     if alpha >= beta:
                         break  # Élagage beta
+            
+            # Stocker le résultat dans la table de transposition
+            TRANSPOSITION_TABLE[state_hash] = (profondeur, value)
             return value
             
         # Min node (tour de l'adversaire)
@@ -413,26 +434,36 @@ class GameState:
             for move in self.get_legal_moves():
                 nouvel_etat = self.apply_move(move)
                 if nouvel_etat:
-                    score = nouvel_etat.minimax(profondeur - 1, IA_index, alpha, beta)
+                    score = nouvel_etat.minimax(
+                        profondeur - 1, IA_index, alpha, beta, 
+                        poids_avancer, poids_bloquer, poids_murs,
+                        poids_avance
+                    )
                     value = min(value, score)
                     beta = min(beta, value)
                     if beta <= alpha:
                         break  # Élagage alpha
+            
+            # Stocker le résultat dans la table de transposition
+            TRANSPOSITION_TABLE[state_hash] = (profondeur, value)
             return value
     
-    def choix_coup(self, profondeur=3, IA_index=None, epsilon=0.0, temperature=0.0) -> tuple:
+    def choix_coup(self, profondeur=3, IA_index=None, epsilon=0.0,
+                  poids_avancer=1.2, poids_bloquer=0.8, poids_murs=0.1,
+                  poids_avance=0.5) -> tuple:
         """Choix du meilleur coup à jouer avec minimax + élagage alpha-beta
         
         Args:
             profondeur: profondeur de recherche
             IA_index: indice du joueur IA (0 ou 1)
             epsilon: probabilité de choisir un coup aléatoire (exploration)
-            temperature: paramètre de température pour contrôler l'exploration (non utilisé actuellement)
-        
+            poids_avancer: importance de se rapprocher de son objectif
+            poids_bloquer: importance de bloquer l'adversaire
+            poids_murs: importance des murs restants
+            poids_avance: importance de l'avance dans la course
         Returns:
             meilleur_coup: le coup choisi
         """
-        import random
         
         if IA_index is None:
             IA_index = self.tour
@@ -474,7 +505,11 @@ class GameState:
                 continue  # Coup invalide
                 
             # Évaluer récursivement avec minimax
-            score = -nouvel_etat.minimax(profondeur-1, 1-IA_index, -beta, -alpha)
+            score = -nouvel_etat.minimax(
+                profondeur-1, 1-IA_index, -beta, -alpha,
+                poids_avancer, poids_bloquer, poids_murs,
+                poids_avance
+            )
             
             # Mettre à jour le meilleur coup
             if score > meilleur_score:

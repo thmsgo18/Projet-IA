@@ -4,13 +4,36 @@ from Object.Plateau import Plateau
 from Object.Joueur import Joueur
 from GameState import GameState
 
-# Profondeur fixe pour l'algorithme minimax
-PROFONDEUR = 3
+# Paramètres pour les différents niveaux d'IA
+IA_LEVELS = {
+    "facile": {
+        "profondeur": 1,
+        "epsilon": 0.4,
+        "poids_avancer": 1,
+        "poids_bloquer": 0.5,
+        "poids_murs": 0.2
+    },
+    "moyen": {
+        "profondeur": 2,
+        "epsilon": 0.2,
+        "poids_avancer": 1.2,
+        "poids_bloquer": 0.8,
+        "poids_murs": 0.3
+    },
+    "difficile": {
+        "profondeur": 3,
+        "epsilon": 0.1,
+        "poids_avancer": 1.5,
+        "poids_bloquer": 1,
+        "poids_murs": 0.4
+    }
+}
 
 class Quoridor:
-    def __init__(self, ai_flags=None):
+    def __init__(self, ai_flags=None, ai_level="moyen"):
         """
         ai_flags: liste de bool [is_ai_joueur1, is_ai_joueur2]
+        ai_level: niveau de difficulté de l'IA ("facile", "moyen", "difficile")
         """
         self.plateau = Plateau()
         max_idx = 2 * self.plateau.taille - 2  # 16 si taille=9
@@ -25,6 +48,10 @@ class Quoridor:
         self.tour = 0
         # par défaut, personne n'est IA
         self.ai_flags = ai_flags or [False, False]
+        # niveau de l'IA
+        self.ai_level = ai_level
+        # niveaux spécifiques pour chaque IA (utilisé en mode IA vs IA)
+        self.ai_levels = {0: ai_level, 1: ai_level}
 
     def afficher_plateau(self):
         self.plateau.afficher()
@@ -44,25 +71,23 @@ class Quoridor:
 
         # Si IA, on choisit et applique automatiquement
         if is_ai:
-            print(f"--- Tour du joueur {j.nom} (IA) ---")
+            # Utiliser le niveau spécifique à cette IA
+            current_ai_level = self.ai_levels.get(self.tour, self.ai_level)
+            print(f"--- Tour du joueur {j.nom} (IA - {current_ai_level}) ---")
             state = GameState(self.plateau, self.joueurs, self.tour)
             
-            # Utiliser la profondeur fixe
-            profondeur_adaptee = PROFONDEUR
+            # Récupérer les paramètres selon le niveau
+            params = IA_LEVELS[current_ai_level]
+            profondeur = params["profondeur"]
+            epsilon_base = params["epsilon"]
             
-            # Ajuster epsilon (exploration) selon la phase du jeu
-            distance_objectif = abs(j.position[0] - j.ligne_obj)
-            epsilon = 0.3  # Valeur par défaut
-            if distance_objectif <= 3:  # Fin de partie
-                epsilon = 0.1  # Moins d'exploration en fin de partie
-            elif distance_objectif >= 7:  # Début de partie
-                epsilon = 0.4  # Plus d'exploration en début de partie
+            # Utiliser une valeur fixe pour epsilon, sans notion de phase
+            epsilon = epsilon_base
             
             best_move = state.choix_coup(
-                profondeur=profondeur_adaptee,
+                profondeur=profondeur,
                 IA_index=self.tour,
-                epsilon=epsilon,
-                temperature=0.5
+                epsilon=epsilon
             )
             print("L'IA joue :", best_move)
             new_state = state.apply_move(best_move)
@@ -73,7 +98,7 @@ class Quoridor:
 
         # Sinon, interaction humaine
         print(f"--- Tour du joueur {j.nom} ---")
-        choix = input("(d)éplacer, (m)ur, (i)A, (q)uitter : ").strip().lower()
+        choix = input("(d)éplacer, (m)ur, (q)uitter : ").strip().lower()
         if choix == "q":
             print("Au revoir !")
             sys.exit()
@@ -94,42 +119,15 @@ class Quoridor:
                 y = int(input("y mur (impair) : "))
             except ValueError:
                 print("Coordonnées invalides."); return
-            ori = input("orientation (horizontal/vertical) : ").strip().lower()
-            if ori not in ("horizontal","vertical"):
+            ori = input("orientation (h)orizontal/(v)ertical : ").strip().lower()
+            if ori not in ("h","v"):
                 print("Orientation invalide."); return
-            if not self.plateau.placer_mur(x,y,ori):
+            if not self.plateau.placer_mur(y,x,ori):
                 print("Placement invalide."); return
             if not all(self.plateau.chemin_existe(p.position,p.ligne_obj)
                        for p in self.joueurs):
                 print("Bloque un chemin !"); return
             j.utiliser_mur()
-        elif choix == "i":
-            # IA ponctuelle
-            state = GameState(self.plateau, self.joueurs, self.tour)
-            
-            # Utiliser la profondeur adaptative selon la phase du jeu
-            profondeur_adaptee = PROFONDEUR_BASE
-            
-            # Ajuster epsilon selon la phase du jeu
-            distance_objectif = abs(j.position[0] - j.ligne_obj)
-            epsilon = 0.1  # Valeur par défaut
-            if distance_objectif <= 3:  # Fin de partie
-                epsilon = 0.05  # Moins d'exploration en fin de partie
-            elif distance_objectif >= 7:  # Début de partie
-                epsilon = 0.15  # Plus d'exploration en début de partie
-                
-            best_move = state.choix_coup(
-                profondeur=profondeur_adaptee,
-                IA_index=self.tour,
-                epsilon=epsilon,
-                temperature=0.5
-            )
-            print("L'IA joue :", best_move)
-            new_state = state.apply_move(best_move)
-            self.plateau = new_state.plateau
-            self.joueurs = new_state.joueurs
-            self.tour = new_state.tour
-            return
         else:
             print("Action inconnue."); return
 
@@ -141,14 +139,54 @@ if __name__ == "__main__":
     mode = None
     while mode not in ("1","2","3"):
         mode = input("Mode de jeu: 1) H vs H  2) H vs IA  3) IA vs IA : ").strip()
+    
     # Définir les flags IA
     ai_flags = [False, False]
     if mode == "2":
         ai_flags[1] = True
+        # Sélection du niveau d'IA pour l'adversaire
+        level = None
+        while level not in ("1", "2", "3"):
+            level = input("Niveau de l'IA: 1) Facile  2) Moyen  3) Difficile : ").strip()
+        ai_level = {
+            "1": "facile",
+            "2": "moyen",
+            "3": "difficile"
+        }[level]
     elif mode == "3":
         ai_flags = [True, True]
+        # Sélection du niveau pour chaque IA
+        level1 = None
+        while level1 not in ("1", "2", "3"):
+            level1 = input("Niveau de l'IA 1: 1) Facile  2) Moyen  3) Difficile : ").strip()
+        level2 = None
+        while level2 not in ("1", "2", "3"):
+            level2 = input("Niveau de l'IA 2: 1) Facile  2) Moyen  3) Difficile : ").strip()
+        
+        # Créer un dictionnaire pour stocker les niveaux de chaque IA
+        ai_levels = {
+            0: {
+                "1": "facile",
+                "2": "moyen",
+                "3": "difficile"
+            }[level1],
+            1: {
+                "1": "facile",
+                "2": "moyen",
+                "3": "difficile"
+            }[level2]
+        }
+        # Utiliser le niveau moyen comme niveau par défaut pour l'interface
+        ai_level = "moyen"
+    else:
+        ai_level = "moyen"  # Valeur par défaut, ne sera pas utilisée
 
-    jeu = Quoridor(ai_flags=ai_flags)
+    # Créer le jeu
+    jeu = Quoridor(ai_flags=ai_flags, ai_level=ai_level)
+    
+    # Si mode IA vs IA, stocker les niveaux spécifiques
+    if mode == "3":
+        jeu.ai_levels = ai_levels
     while True:
         jeu.afficher_plateau()
         if (g := jeu.verifier_victoire()) is not None:

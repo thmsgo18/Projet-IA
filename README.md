@@ -3,11 +3,50 @@
 ## Image du jeu Quoridor :
 ![Image du jeu Quoridor](image-quoridor.jpg)
 
+## Comment exécuter le jeu
+
+### Prérequis
+- Python 3.6 ou supérieur
+
+### Installation
+Aucune installation de dépendance n'est nécessaire. Le jeu utilise uniquement des bibliothèques standards de Python.
+
+### Exécution du jeu
+Pour lancer le jeu, exécutez simplement le fichier `Quoridor.py` :
+
+```bash
+python Quoridor.py
+```
+
+### Comment jouer
+
+1. Au lancement du jeu, choisissez un mode de jeu :
+   - 1 : Humain contre Humain
+   - 2 : Humain contre IA
+   - 3 : IA contre IA
+
+2. Si vous choisissez un mode avec IA, sélectionnez le niveau de difficulté :
+   - 1 : Facile
+   - 2 : Moyen
+   - 3 : Difficile
+
+3. À chaque tour, vous avez trois options :
+   - `d` : Déplacer votre pion
+     - Choisissez ensuite la direction avec `h` (haut), `b` (bas), `g` (gauche), `d` (droite)
+   - `m` : Placer un mur
+     - Entrez les coordonnées `x` et `y` (nombres impairs)
+     - Choisissez l'orientation avec `h` (horizontal) ou `v` (vertical)
+   - `q` : Quitter la partie
+
+4. Le plateau de jeu est affiché avec les coordonnées. Les joueurs sont représentés par "1" et "2", les cases vides par "o" et les murs par "█".
+
+5. Le premier joueur qui atteint la ligne opposée à sa ligne de départ gagne la partie.
+
 ## Présentation du jeu Quoridor :
 
 ### Élément du jeu :
 
-    - Nombre de joueurs : 2 ou 4.
+    - Nombre de joueurs : 2.
     - Plateau de 81 cases ( 9 x 9 ).
     - 20 barrières.
 

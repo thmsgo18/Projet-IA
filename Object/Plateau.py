@@ -47,11 +47,11 @@ class Plateau:
         # coordonnées impaires
         if x % 2 == 0 or y % 2 == 0:
             return False
-        if orientation == "horizontal" and self.est_mur_horizontal_valide(x, y):
+        if orientation == "h" and self.est_mur_horizontal_valide(x, y):
             for dy in (-1,0,1):
                 self.matrice[x][y+dy] = Plateau.WALL
             return True
-        if orientation == "vertical" and self.est_mur_vertical_valide(x, y):
+        if orientation == "v" and self.est_mur_vertical_valide(x, y):
             for dx in (-1,0,1):
                 self.matrice[x+dx][y] = Plateau.WALL
             return True
